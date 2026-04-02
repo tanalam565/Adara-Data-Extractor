@@ -1,4 +1,8 @@
 import os
+import uuid
+import time
+import random
+import hashlib
 from typing import Dict, Any
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.formrecognizer import DocumentAnalysisClient
@@ -76,6 +80,20 @@ def enhance_with_gpt4_ocr(full_text: str, pages_text: list) -> Dict[str, Any]:
     
     # Use more text for better context 
     text_sample = full_text
+
+    # Cache-breaking identifiers
+    extraction_id = str(uuid.uuid4())
+    random_seed = random.randint(100000, 999999)
+    doc_hash = hashlib.sha256(full_text.encode()).hexdigest()[:16]
+
+    time.sleep(0.5)
+
+    cache_breaker = random.choice([
+        "You must extract data with precision.",
+        "Your task is to extract insurance information.",
+        "Extract the insurance data accurately.",
+        "Parse the following insurance document carefully."
+    ])
     
     prompt = f"""
 Extract insurance policy information from the following OCR text. This is raw text from an insurance document, so look carefully for dates, amounts, coverages, and deductibles that may be scattered throughout.
@@ -179,6 +197,14 @@ INSTRUCTIONS:
   - Return "Multiple" if the policy went out of force more than once.
   - Return null if the document does not mention the policy going out of force.
 
+- out_of_force_start_date: The date the policy went out of force, in YYYY-MM-DD format.
+  - Look for phrases like "out-of-force from [date]", "policy was out of force from [date]", or similar.
+  - Return null if not present or if out_of_force is null.
+
+- out_of_force_end_date: The date the policy was restored from out-of-force, in YYYY-MM-DD format.
+  - Look for phrases like "out-of-force from [date] to [date]", where the second date is the end.
+  - Return null if not present or if out_of_force is null.
+
 11) ADDITIONAL INSURED REMOVAL
 - additional_insured_removal: If the document indicates that an additional insured has been removed or that the tenant requested removal of a specific entity as an additional insured:
   - Return the name of the entity being removed (e.g. "Adara Communities").
@@ -206,20 +232,23 @@ Return ONLY a valid JSON object with these keys:
 - reinstatement_date
 - renewal_due_date
 - out_of_force
+- out_of_force_start_date
+- out_of_force_end_date
 - additional_insured_removal
 
 Return just the JSON, no explanation text.
 """
 
-
     response = client.chat.completions.create(
         model=deployment_name,
         messages=[
-            {"role": "system", "content": "You are a precise insurance document data extractor. Return only valid JSON."},
+            {"role": "system", "content": f"{cache_breaker} SESSION ID: {extraction_id} DOCUMENT HASH: {doc_hash} You are a precise insurance document data extractor. Return only valid JSON."},
             {"role": "user", "content": prompt}
         ],
         temperature=0.2,
-        max_tokens=1500
+        max_tokens=1500,
+        seed=random_seed,
+        user=f"extraction_{extraction_id}"
     )
     
     import json
