@@ -197,16 +197,21 @@ INSTRUCTIONS:
 
 10) OUT OF FORCE
 - out_of_force: Indicates whether the policy has gone out of force.
-  - Return "Once" if the policy went out of force exactly one time.
-  - Return "Multiple" if the policy went out of force more than once.
-  - Return null if the document does not mention the policy going out of force.
+  - Return "Once" if the document explicitly uses the phrase "out-of-force" or "out of force" exactly one time.
+  - Return "Multiple" if the document explicitly uses the phrase "out-of-force" or "out of force" more than once, or states "multiple time-out-of-force periods exist" or similar.
+  - Return null in ALL other cases including cancellation, termination, voidance, or any event that does not explicitly use the words "out-of-force" or "out of force".
+  - Do NOT infer out_of_force from cancellation dates, voidance dates, or termination dates.
 
 - out_of_force_start_date: The date the policy went out of force, in YYYY-MM-DD format.
-  - Look for phrases like "out-of-force from [date]", "policy was out of force from [date]", or similar.
+  - ONLY extract if out_of_force is not null.
+  - Look ONLY for explicit phrases like "out-of-force from [date]" or "out of force from [date]".
+  - Do NOT use cancellation dates, voidance dates, or termination dates for this field.
   - Return null if not present or if out_of_force is null.
 
 - out_of_force_end_date: The date the policy was restored from out-of-force, in YYYY-MM-DD format.
-  - Look for phrases like "out-of-force from [date] to [date]", where the second date is the end.
+  - ONLY extract if out_of_force is not null.
+  - Look ONLY for explicit phrases like "out-of-force from [date] to [date]", where the second date is the end.
+  - Do NOT use cancellation dates, voidance dates, or termination dates for this field.
   - Return null if not present or if out_of_force is null.
 
 11) ADDITIONAL INSURED REMOVAL
