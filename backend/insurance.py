@@ -211,7 +211,10 @@ INSTRUCTIONS:
 
 11) ADDITIONAL INSURED REMOVAL
 - additional_insured_removal: If the document indicates that an additional insured has been removed or that the tenant requested removal of a specific entity as an additional insured:
-  - Return the name of the entity being removed (e.g. "Adara Communities").
+  - Return the name of the entity being removed as stated in the BODY of the letter (e.g. "Adara Communities").
+  - The removed entity is typically referenced in phrases like "delete your organization's name", "remove [entity] as additional insured", "requested to delete [entity]", or similar.
+  - Do NOT return the name of the letter recipient, mortgagee, lienholder, or addressee at the top of the document — these are being NOTIFIED of the removal, not being removed.
+  - Do NOT return the insured's name or the insurance company name.
   - If multiple entities are being removed, separate names with a comma.
   - Return null if no additional insured removal is mentioned.
 
