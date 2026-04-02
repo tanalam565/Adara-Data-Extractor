@@ -113,8 +113,12 @@ INSTRUCTIONS:
   - Do NOT use "Date of Coverage Voidance", "Effective Date of Policy/Certificate Voidance", or any date associated with a cancellation/termination/voidance event.
   - On cancellation, termination, or voidance documents, "Effective Date of Policy/Certificate" refers to the voidance effective date, NOT the original policy start date. Do NOT use it as start_date.
   - Only use a date that is clearly labeled as the original policy inception or start date, separate from any cancellation/termination/voidance context.
+  - If the document is a reinstatement notice, cancellation notice, voidance notice, acknowledgment of cancellation, or any status/event document that does not explicitly state the original policy start date, return null.
+  - Do NOT infer or guess start_date from form numbers, document identifiers, prepared dates, processed dates, or any date not explicitly labeled as a policy start or inception date.
   - If the policy start date is not explicitly stated, return null.
 - end_date: Policy expiration date in YYYY-MM-DD format. Do not assume. Return null if not present.
+  - If the document is a reinstatement notice, cancellation notice, voidance notice, acknowledgment of cancellation, or any status/event document that does not explicitly state the policy expiration date, return null.
+  - Do NOT infer or guess end_date from any date not explicitly labeled as a policy expiration or end date.
 - premium_amount: The total/regular policy premium cost. Do NOT use outstanding or overdue amounts here.
                   If multiple premiums are shown, mention them like field all_coverages and all_deductibles field only if necessary.
 - premium_due: The outstanding or overdue premium amount currently owed (e.g. labeled as "Premium Due", "Premium Amount Due", "Amount Due").
