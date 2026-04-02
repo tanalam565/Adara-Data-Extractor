@@ -1,0 +1,27 @@
+# ── Web framework ──────────────────────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+starlette==0.38.6
+python-multipart==0.0.12
+
+# ── Azure Document Intelligence ────────────────────────────────
+# id.py uses the older azure-ai-formrecognizer SDK (prebuilt-idDocument)
+azure-ai-formrecognizer==3.3.3
+# bulk_invoice.py, invoice.py, insurance.py, proof_of_income.py use the newer SDK
+azure-ai-documentintelligence==1.0.2
+azure-core==1.32.0
+
+# ── Azure OpenAI ───────────────────────────────────────────────
+openai==1.59.3
+
+# ── HTTP client ────────────────────────────────────────────────
+httpx==0.27.2
+
+# ── Environment variables ──────────────────────────────────────
+python-dotenv==1.0.1
+
+# ── Async support ──────────────────────────────────────────────
+anyio==4.7.0
+
+# ── Production server ──────────────────────────────────────────
+gunicorn==23.0.0
