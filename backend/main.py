@@ -978,12 +978,12 @@ async def extract_vendor(
 
         if all(
             extracted_data.get(field) in (None, "", [])
-            for field in ["insured_name", "certificate_number", "policies"]
+            for field in ["insured_name"]
         ):
             msg = "The provided document does not appear to be a vendor certificate."
             raise HTTPException(status_code=400, detail=msg)
 
-        vital_fields = ["insured_name", "certificate_number", "policies"]
+        vital_fields = ["insured_name"]
         vital_fields_status = {
             field: extracted_data.get(field) not in (None, "", [])
             for field in vital_fields
