@@ -184,7 +184,7 @@ Return just the JSON, no explanation text.
             },
             {"role": "user", "content": prompt}
         ],
-        temperature=0.2,
+        temperature=0,
         max_tokens=4000,
         seed=random_seed,
         user=f"extraction_{extraction_id}"
