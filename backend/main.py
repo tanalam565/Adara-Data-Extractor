@@ -18,6 +18,7 @@ from id_document import extract_id_data
 from insurance import extract_insurance_data_ocr
 from invoice import extract_invoice_data
 from bulk_invoice import extract_invoice_data as extract_bulk_invoice_data
+from vendor import extract_vendor_data_ocr
 
 from dotenv import load_dotenv
 
@@ -35,6 +36,7 @@ API_KEY_POI         = os.getenv("API_KEY_POI", "")
 API_KEY_ID          = os.getenv("API_KEY_ID", "")
 API_KEY_INSURANCE   = os.getenv("API_KEY_INSURANCE", "")
 API_KEY_BULKINVOICE = os.getenv("API_KEY_BULKINVOICE", "")
+API_KEY_VENDOR      = os.getenv("API_KEY_VENDOR", "")
 API_KEY_MASTER      = os.getenv("API_KEY_MASTER", "")  # Master key for all services
 ENABLE_FRONTEND     = os.getenv("ENABLE_FRONTEND", "true").lower() == "true"
 
@@ -137,6 +139,19 @@ async def verify_api_key_bulkinvoice(x_api_key: Optional[str] = Header(None)):
     
     if x_api_key != API_KEY_BULKINVOICE and x_api_key != API_KEY_MASTER:
         raise HTTPException(status_code=401, detail="Invalid API key for bulk invoice extraction")
+    
+    return True
+
+async def verify_api_key_vendor(x_api_key: Optional[str] = Header(None)):
+    """Verify API key for vendor extraction"""
+    if not API_KEY_VENDOR and not API_KEY_MASTER:
+        return True
+    
+    if not x_api_key:
+        raise HTTPException(status_code=401, detail="API key missing. Include 'X-API-Key' header.")
+    
+    if x_api_key != API_KEY_VENDOR and x_api_key != API_KEY_MASTER:
+        raise HTTPException(status_code=401, detail="Invalid API key for vendor extraction")
     
     return True
 
@@ -476,6 +491,7 @@ async def root():
                         <li><code style="background: #f0f0f0; padding: 5px;">POST /extract/id</code> - ID Document extraction</li>
                         <li><code style="background: #f0f0f0; padding: 5px;">POST /extract/insurance</code> - Insurance Document extraction</li>
                         <li><code style="background: #f0f0f0; padding: 5px;">POST /extract/bulkinvoice</code> - Bulk Invoice extraction</li>
+                        <li><code style="background: #f0f0f0; padding: 5px;">POST /extract/vendor</code> - Vendor Certificate extraction</li>
                     </ul>
                 </div>
                 
@@ -487,6 +503,7 @@ async def root():
                         <li><strong>ID:</strong> Driver licenses, passports, national IDs, visas</li>
                         <li><strong>Insurance:</strong> Home insurance policies, certificates</li>
                         <li><strong>Bulk Invoice:</strong> Multiple vendor invoices in a single request</li>
+                        <li><strong>Vendor:</strong> ACORD Certificate of Liability Insurance</li>
                     </ul>
                 </div>
                 
@@ -930,6 +947,77 @@ async def extract_bulk_invoice(
         "processing_time_seconds": round(total_time, 2),
     }
 
+# ==================== VENDOR EXTRACTION ====================
+
+@app.post("/extract/vendor")
+async def extract_vendor(
+    file: UploadFile = File(...),
+    authenticated: bool = Depends(verify_api_key_vendor)
+):
+    """Extract data from ACORD Certificate of Liability Insurance"""
+    start_time = datetime.now()
+
+    try:
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No filename provided")
+
+        content = await file.read()
+        if len(content) == 0:
+            raise HTTPException(status_code=400, detail="Empty file")
+
+        if len(content) > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail="File too large. Maximum size is 15MB"
+            )
+
+        try:
+            extracted_data = extract_vendor_data_ocr(content)
+        except ValueError as ve:
+            raise HTTPException(status_code=400, detail=str(ve))
+
+        if all(
+            extracted_data.get(field) in (None, "", [])
+            for field in ["insured_name", "certificate_number", "policies"]
+        ):
+            msg = "The provided document does not appear to be a vendor certificate."
+            raise HTTPException(status_code=400, detail=msg)
+
+        vital_fields = ["insured_name", "certificate_number", "policies"]
+        vital_fields_status = {
+            field: extracted_data.get(field) not in (None, "", [])
+            for field in vital_fields
+        }
+
+        needs_review = not all(vital_fields_status.values())
+        review_reason = (
+            f"Missing vital field(s): {', '.join(f for f, v in vital_fields_status.items() if not v)}"
+            if needs_review else None
+        )
+
+        field_count = count_non_null_fields(extracted_data)
+        total_time = (datetime.now() - start_time).total_seconds()
+        status = "needs_review" if needs_review else "success"
+
+        return {
+            "status": status,
+            "document_type": "vendor",
+            "requires_human_review": needs_review,
+            "review_reason": review_reason,
+            "data": extracted_data,
+            "field_count": field_count,
+            "vital_fields_status": vital_fields_status,
+            "processing_time_seconds": round(total_time, 2),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        total_time = (datetime.now() - start_time).total_seconds()
+        error_msg = str(e) if str(e) else "Unknown error occurred"
+        error_trace = traceback.format_exc()
+        raise HTTPException(status_code=500, detail={"error": error_msg, "file": file.filename, "traceback": error_trace[:500]})
+
 # ==================== FRONTEND ROUTES ====================
 
 @app.get("/test", response_class=HTMLResponse)
@@ -957,7 +1045,8 @@ async def health_check():
             "poi": "available",
             "id": "available",
             "insurance": "available",
-            "bulkinvoice": "available"
+            "bulkinvoice": "available",
+            "vendor": "available"
         }
     }
 
