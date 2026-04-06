@@ -5,7 +5,7 @@ import random
 import hashlib
 import json
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence import DocumentIntelligenceClient
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def extract_vendor_data_ocr(file_content: bytes) -> Dict[str, Any]:
     """
     Extract vendor/certificate data using Azure Document Intelligence
-    prebuilt-read (OCR), then structure with GPT.
+    prebuilt-layout (table-aware OCR), then structure with GPT.
     """
     endpoint = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT")
     key = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_KEY")
@@ -31,12 +31,12 @@ def extract_vendor_data_ocr(file_content: bytes) -> Dict[str, Any]:
         api_version="2024-11-30"
     )
 
-    # Use prebuilt-read for OCR text extraction
+    # Use prebuilt-layout for table and checkbox detection
     poller = client.begin_analyze_document(
-        model_id="prebuilt-read",
+        model_id="prebuilt-layout",
         body=file_content,
         content_type="application/octet-stream",
-        pages="1-10"
+        pages="1-3"
     )
 
     result = poller.result()
@@ -44,22 +44,46 @@ def extract_vendor_data_ocr(file_content: bytes) -> Dict[str, Any]:
     # Extract full text content
     full_text = result.content if hasattr(result, "content") else ""
 
-    logger.info(f"Extracted text length: {len(full_text)} characters")
+    # Extract tables as structured text
+    tables_text = ""
+    if hasattr(result, "tables") and result.tables:
+        for table_idx, table in enumerate(result.tables):
+            tables_text += f"\n--- TABLE {table_idx + 1} ---\n"
+            # Organize cells by row
+            rows: Dict[int, Dict[int, str]] = {}
+            for cell in table.cells:
+                row = cell.row_index
+                col = cell.column_index
+                content = cell.content or ""
+                if row not in rows:
+                    rows[row] = {}
+                rows[row][col] = content
+            # Write rows in order
+            for row_idx in sorted(rows.keys()):
+                row_cells = rows[row_idx]
+                row_text = " | ".join(
+                    row_cells.get(col, "").strip()
+                    for col in sorted(row_cells.keys())
+                )
+                tables_text += row_text + "\n"
 
-    if not full_text:
+    logger.info(f"Extracted text length: {len(full_text)} characters")
+    logger.info(f"Extracted tables text length: {len(tables_text)} characters")
+
+    if not full_text and not tables_text:
         raise ValueError(
             "No text could be extracted from document. "
             "It may be corrupted, image-only, or not a valid document."
         )
 
-    structured_data = enhance_with_gpt(full_text)
+    structured_data = enhance_with_gpt(full_text, tables_text)
     return structured_data
 
 
-def enhance_with_gpt(full_text: str) -> Dict[str, Any]:
+def enhance_with_gpt(full_text: str, tables_text: str) -> Dict[str, Any]:
     """
     Use GPT to extract and structure vendor/certificate information
-    from OCR text.
+    from layout OCR text and structured table output.
     """
     openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
     openai_key = os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("AZURE_OPENAI_KEY")
@@ -93,9 +117,13 @@ def enhance_with_gpt(full_text: str) -> Dict[str, Any]:
 
     prompt = f"""
 Extract all data from this ACORD Certificate of Liability Insurance document.
+Use both the raw OCR text and the structured table data provided below.
 
-OCR TEXT:
+RAW OCR TEXT:
 {full_text}
+
+STRUCTURED TABLE DATA:
+{tables_text}
 
 INSTRUCTIONS:
 
@@ -125,7 +153,7 @@ INSTRUCTIONS:
   Each policy object must have:
   - insurer_letter: The insurer letter (A, B, C, etc.) for this policy row. Return null if not present.
   - policy_type: Type of insurance (e.g. "Commercial General Liability", "Automobile Liability", "Workers Compensation and Employers Liability", "Excess Workers Compensation"). Return null if not present.
-    - If the policy type is Umbrella Liability, Excess Liability, or any combination of both, ALWAYS return "Umbrella Liability/Excess Liability".
+  - If the policy type is Umbrella Liability, Excess Liability, or any combination of both, ALWAYS return "Umbrella Liability/Excess Liability".
   - policy_number: Policy number. Return null if not present.
   - policy_effective_date: Policy effective date in YYYY-MM-DD format. Return null if not present.
   - policy_expiration_date: Policy expiration date in YYYY-MM-DD format. Return null if not present.
@@ -184,7 +212,7 @@ Return just the JSON, no explanation text.
             },
             {"role": "user", "content": prompt}
         ],
-        temperature=0,
+        temperature=0.2,
         max_tokens=4000,
         seed=random_seed,
         user=f"extraction_{extraction_id}"
