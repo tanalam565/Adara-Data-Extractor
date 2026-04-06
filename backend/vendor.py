@@ -150,6 +150,8 @@ INSTRUCTIONS:
 
 5) POLICIES
 - policies: Array of policy objects. Extract ALL policy rows from the coverages table.
+- For each policy number row in the coverages table, create a policy object with the following fields. If any field cannot be confidently determined, return null for that field.
+- Do not add policies from description of operations or additional remarks sections — only from the coverages table.
   Each policy object must have:
   - insurer_letter: The insurer letter (A, B, C, etc.) for this policy row. Return null if not present.
   - policy_type: Type of insurance (e.g. "Commercial General Liability", "Automobile Liability", "Workers Compensation and Employers Liability", "Excess Workers Compensation"). Return null if not present.
