@@ -219,6 +219,7 @@
             <button class="tab" onclick="switchTab('id', this)">🪪 ID Document</button>
             <button class="tab" onclick="switchTab('insurance', this)">🏠 Insurance</button>
             <button class="tab" onclick="switchTab('bulkinvoice', this)">📦 Bulk Invoice</button>
+            <button class="tab" onclick="switchTab('vendor', this)">📋 Vendor</button>
         </div>
 
         <!-- ==================== INVOICE TAB ==================== -->
@@ -380,6 +381,31 @@
 
             <div class="result" id="bulkinvoice-result"></div>
         </div>
+
+        <!-- ==================== VENDOR TAB ==================== -->
+        <div id="vendor-content" class="tab-content">
+            <div class="api-key-input">
+                <label>API Key:</label>
+                <input type="password" id="vendor-api-key" placeholder="Enter your Vendor API key">
+            </div>
+            <div class="upload-section" id="vendor-upload">
+                <div class="upload-icon">📋</div>
+                <h3>Drag and drop your vendor certificate here or click to browse</h3>
+                <p style="color:#666; margin-top:10px;">ACORD Certificate of Liability Insurance · PDF, JPG, PNG, HEIC, HEIF · Max 15MB</p>
+                <input type="file" id="vendor-file" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif">
+                <button class="btn" onclick="document.getElementById('vendor-file').click()">Choose File</button>
+            </div>
+            <div id="vendor-selected" style="margin-top:20px; text-align:center; display:none;">
+                <p><strong>Selected:</strong> <span id="vendor-filename"></span></p>
+                <button class="btn" onclick="uploadSingleFile('vendor')">Extract Vendor Data</button>
+            </div>
+            <div class="loading" id="vendor-loading">
+                <div class="spinner"></div>
+                <p>Processing vendor certificate...</p>
+            </div>
+            <div class="result" id="vendor-result"></div>
+        </div>
+
     </div>
 
     <script>
@@ -392,7 +418,7 @@
         }
 
         // ==================== DRAG & DROP — SINGLE FILE TABS ====================
-        ['invoice', 'poi', 'id', 'insurance'].forEach(type => {
+        ['invoice', 'poi', 'id', 'insurance', 'vendor'].forEach(type => {
             const section  = document.getElementById(type + '-upload');
             const input    = document.getElementById(type + '-file');
 

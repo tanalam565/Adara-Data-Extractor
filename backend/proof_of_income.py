@@ -1,5 +1,9 @@
 import os 
 import json
+import uuid
+import time
+import random
+import hashlib
 import logging
 from typing import Dict, Any, List
 from azure.core.credentials import AzureKeyCredential
@@ -95,6 +99,20 @@ def enhance_with_gpt(full_text: str, pages_text: list) -> Dict[str, Any]:
         text_sample = full_text
     else:
         text_sample = "\n\n".join(pages_text) 
+
+    # Cache-breaking identifiers
+    extraction_id = str(uuid.uuid4())
+    random_seed = random.randint(100000, 999999)
+    doc_hash = hashlib.sha256(full_text.encode()).hexdigest()[:16]
+
+    time.sleep(0.5)
+
+    cache_breaker = random.choice([
+        "You must extract data with precision.",
+        "Your task is to extract employment and income information.",
+        "Extract the proof of income data accurately.",
+        "Parse the following employment document carefully."
+    ])
     
     logger.info("Sending request to GPT for data structuring")
 
@@ -209,7 +227,7 @@ For each applicant and each of their jobs, extract:
 
     - Exclude the following from consideration as income:
       - Opening / Beginning / Ending balances
-      - Internal transfers between the applicant’s own accounts
+      - Internal transfers between the applicant's own accounts
       - Chargebacks or reversals
       - Refunds or adjustments
       - Zelle deposits
@@ -227,7 +245,7 @@ For each applicant and each of their jobs, extract:
         - Clusters every ~14 days → bi-weekly
         - Clusters around the 1st and 15th → semi-monthly
         - Clusters roughly every 25–32 days → monthly
-      - Create “period checks”:
+      - Create "period checks":
         - For each weekly, bi-weekly, semi-monthly, or monthly group, sum all daily totals within that group.
         - Select the three most recent period totals as the three_consecutive_checks.
         - Format each as "MM-DD-YY: amount"
@@ -380,12 +398,19 @@ ADDITIONAL RULES
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an expert at extracting employment and income data from documents. Always respond with valid JSON only.",
+                    "content": (
+                        f"{cache_breaker} SESSION ID: {extraction_id} "
+                        f"DOCUMENT HASH: {doc_hash} "
+                        "You are an expert at extracting employment and income data from documents. "
+                        "Always respond with valid JSON only."
+                    ),
                 },
                 {"role": "user", "content": prompt},
             ],
             temperature=0,
             max_tokens=4000,
+            seed=random_seed,
+            user=f"extraction_{extraction_id}"
         )
         
         if isinstance(response, str):
