@@ -915,8 +915,8 @@ async def extract_bulk_invoice(
                 "invoiceId": current_invoice_id,
                 "propertyName": prop.get("propertyName"),
                 "vendorName": raw.get("vendorName"),
-                "invoiceNumber": raw.get("invoiceNumber"),
-                "invoiceDate": raw.get("invoiceDate"),
+                "invoiceNumber": prop.get("invoiceNumber") or raw.get("invoiceNumber"),
+                "invoiceDate": prop.get("invoiceDate") or raw.get("invoiceDate"),
                 "notes": prop.get("notes"),
                 "uploadInvoice": raw.get("uploadInvoice"),
                 "invoiceItems": invoice_items,
@@ -939,6 +939,8 @@ async def extract_bulk_invoice(
             "total_invoices": sum(len(r.get("invoices", [])) for r in final_results),
         },
     )
+
+    print(json.dumps({"status": "success", "document_type": "bulkinvoice", "data": final_results}, indent=2))
 
     return {
         "status": "success",
