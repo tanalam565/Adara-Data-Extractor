@@ -218,6 +218,7 @@ For each applicant and each of their jobs, extract:
      - Only consider the recurring income amounts mentioned in the document.
    - If it is an F-1 visa, return the annual funding from the document.
    - If it is an employer letter or employee record, return the amount mentioned. Ignore invoices or bank statements.
+   - Do not create checks or deposits that are not explicitly mentioned in the document. For example, if there is only one paycheck mentioned in the document or yearly/monthly salary is mentioned, do not invent two additional checks to make three.
    - For bank statements (when paystubs or paychecks are missing or incomplete):
 
     - Identify deposit transactions that appear to be income based on descriptors such as:
@@ -370,9 +371,9 @@ Return ONLY a valid JSON object with this structure (no additional text):
           "average_monthly_income": "4333.33",
           "income_calculation_details": "Based on yearly salary: 52000 / 12 months = 4333.33/month",
           "bank_balances": [
-            "10-10-24: 5000, 1000",
-            "04-16-25: 15000, 6000",
-            "11-30-25: 500, 8000"
+            "10-10-24: total deposit:5000,  ending balance: 1000",
+            "04-16-25: total deposit:15000,  ending balance: 6000",
+            "11-30-25: total deposit:500,  ending balance: 8000"
           ],
           "currency":"USD"
         }}
@@ -408,7 +409,7 @@ ADDITIONAL RULES
                 {"role": "user", "content": prompt},
             ],
             temperature=0,
-            max_tokens=4000,
+            max_tokens=8000,
             seed=random_seed,
             user=f"extraction_{extraction_id}"
         )

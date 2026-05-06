@@ -221,8 +221,8 @@ def requires_human_review_poi(extracted_data: dict) -> Tuple[bool, str]:
         missing_for_this = []
         if _value_is_empty(applicant_name):
             missing_for_this.append("applicant")
-        if _value_is_empty(avg_income):
-            missing_for_this.append("average_monthly_income")
+        # if _value_is_empty(avg_income):
+            # missing_for_this.append("average_monthly_income")
 
         if not missing_for_this:
             has_complete_record = True

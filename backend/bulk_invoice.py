@@ -64,10 +64,10 @@ def extract_flat_invoices(ocr_text: str) -> Dict[str, Any]:
     Each line item carries its invoice context (invoice_number, property_name, etc.)
     Python then groups them.
     """
-    openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT_GPT5")
-    openai_key = os.getenv("AZURE_OPENAI_API_KEY_GPT5")
-    deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME_GPT5")
-    api_version = os.getenv("AZURE_OPENAI_API_VERSION_GPT5", "2025-04-01-preview")
+    openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    openai_key = os.getenv("AZURE_OPENAI_API_KEY")
+    deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+    api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
 
     if not openai_endpoint or not openai_key:
         raise ValueError("Azure OpenAI credentials not configured")
@@ -151,8 +151,7 @@ Invoice text:
             {"role": "user", "content": prompt}
         ],
         temperature=0.1,
-        # max_tokens=32000,
-        max_completion_tokens=128000,
+        max_tokens=32000,
         seed=random_seed,
         user=f"extraction_{extraction_id}"
     )
@@ -271,6 +270,6 @@ def extract_invoice_data(file_content: bytes, filename: str) -> Dict[str, Any]:
     logger.info(
         f"Extraction complete — properties: {len(result['properties'])} | file: {filename}"
     )
-    print(json.dumps(result, indent=2))
+    # print(json.dumps(result, indent=2))
 
     return result
